@@ -18,8 +18,8 @@ The input will come from the step function.
 
 ## Environment Variables
 
-| Name            | Description                                                 |
-|-----------------|-------------------------------------------------------------|
-| DYNAMO_TABLE    | The dynamo table to read the folders and children from      |
-| BUCKET_NAME     | The name of the bucket to write the opex files to           |
-| DYNAMO_GSI_NAME | The name of the global secondary index used to query Dynamo |
+| Name              | Description                                                 |
+|-------------------|-------------------------------------------------------------|
+| DYNAMO_TABLE_NAME | The dynamo table to read the folders and children from      |
+| BUCKET_NAME       | The name of the bucket to write the opex files to           |
+| DYNAMO_GSI_NAME   | The name of the global secondary index used to query Dynamo |
