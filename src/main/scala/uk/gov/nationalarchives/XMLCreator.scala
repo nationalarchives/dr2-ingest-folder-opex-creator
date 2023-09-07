@@ -15,9 +15,7 @@ class XMLCreator {
         <opex:Title>{if (folder.title.isBlank) folder.name else folder.title}</opex:Title>
         <opex:Description>{folder.description}</opex:Description>
         <opex:SecurityDescriptor>{securityDescriptor}</opex:SecurityDescriptor>
-        <Identifers>
-          {if (isHierarchyFolder) <Identifer type="Code">{folder.name}</Identifer>}
-        </Identifers>
+        <Identifers>{if (isHierarchyFolder) <Identifer type="Code">{folder.name}</Identifer>}</Identifers>
       </opex:Properties>
       <opex:Transfer>
         {if (isHierarchyFolder) <opex:SourceID>{folder.name}</opex:SourceID>}

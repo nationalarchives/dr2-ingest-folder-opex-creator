@@ -3,6 +3,7 @@ package uk.gov.nationalarchives
 import cats.effect.IO
 import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.http.RequestMethod
 import org.scalatest.BeforeAndAfterEach
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
@@ -15,6 +16,7 @@ import java.io.{ByteArrayInputStream, ByteArrayOutputStream}
 import java.net.URI
 import java.util.UUID
 import scala.jdk.CollectionConverters._
+import scala.xml.PrettyPrinter
 
 class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   val dynamoServer = new WireMockServer(9005)
@@ -33,6 +35,10 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   def stubPutRequest(itemPaths: String*): Unit = {
+    s3Server.stubFor(
+      head(urlEqualTo(s"/opex/$executionName/$folderId/$folderParentPath/$assetId.pax.opex"))
+        .willReturn(ok().withHeader("Content-Length", "100"))
+    )
     itemPaths.foreach { itemPath =>
       s3Server.stubFor(
         put(urlEqualTo(itemPath))
@@ -61,6 +67,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
     )
 
   val folderId: UUID = UUID.fromString("68b1c80b-36b8-4f0f-94d6-92589002d87e")
+  val assetId: UUID = UUID.fromString("5edc7a1b-e8c4-4961-a63b-75b2068b69ec")
   val folderParentPath: String = "a/parent/path"
   val childId: UUID = UUID.fromString("feedd76d-e368-45c8-96e3-c37671476793")
   val batchId: String = "TEST-ID"
@@ -102,8 +109,25 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |      "batchId": {
        |        "S": "$batchId"
        |      }
+       |    },
+       |    {
+       |      "id": {
+       |        "S": "$assetId"
+       |      },
+       |      "name": {
+       |        "S": "Test Asset"
+       |      },
+       |      "parentPath": {
+       |        "S": "$folderId/$folderParentPath"
+       |      },
+       |      "type": {
+       |        "S": "Asset"
+       |      },
+       |      "batchId": {
+       |        "S": "$batchId"
+       |      }
        |    }
-       |  ]
+       |]
        |}
        |""".stripMargin
   val dynamoGetResponse: String =
@@ -204,7 +228,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
     expectedRequestBody should equal(requestBody)
   }
 
-  "handleRequest" should "upload the opex file" in {
+  "handleRequest" should "upload the opex file to the correct path" in {
     stubGetRequest(dynamoGetResponse)
     stubQueryRequest(dynamoQueryResponse)
     val opexPath = s"/opex/$executionName/$folderParentPath/$folderId/$folderId.opex"
@@ -214,6 +238,42 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
 
     val s3CopyRequests = s3Server.getAllServeEvents.asScala
     s3CopyRequests.count(_.getRequest.getUrl == opexPath) should equal(1)
+  }
+
+  "handleRequest" should "upload the correct body to S3" in {
+    val prettyPrinter = new PrettyPrinter(180, 2)
+    val expectedResponseXML =
+      <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
+        <opex:Properties>
+          <opex:Title>Test Name</opex:Title>
+          <opex:Description></opex:Description>
+          <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
+          <Identifers></Identifers>
+        </opex:Properties>
+        <opex:Transfer>
+          <opex:Manifest>
+            <opex:Folders>
+              <opex:Folder>5edc7a1b-e8c4-4961-a63b-75b2068b69ec.pax</opex:Folder>
+              <opex:Folder>TEST-ID.json</opex:Folder>
+            </opex:Folders>
+            <opex:Files>
+              <opex:File type="metadata" size="100">5edc7a1b-e8c4-4961-a63b-75b2068b69ec.pax.opex</opex:File>
+            </opex:Files>
+          </opex:Manifest>
+        </opex:Transfer>
+      </opex:OPEXMetadata>
+    stubGetRequest(dynamoGetResponse)
+    stubQueryRequest(dynamoQueryResponse)
+    val opexPath = s"/opex/$executionName/$folderParentPath/$folderId/$folderId.opex"
+    stubPutRequest(opexPath)
+
+    TestLambda().handleRequest(standardInput, outputStream, null)
+
+    val s3Events = s3Server.getAllServeEvents.asScala
+    val s3PutEvent = s3Events.filter(_.getRequest.getMethod == RequestMethod.PUT).head
+    val body = s3PutEvent.getRequest.getBodyAsString.split("\r\n")(1)
+
+    body should equal(prettyPrinter.format(expectedResponseXML))
   }
 
   "handleRequest" should "return an error if the Dynamo API is unavailable" in {
