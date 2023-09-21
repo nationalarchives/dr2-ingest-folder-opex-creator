@@ -81,7 +81,7 @@ class Lambda extends RequestStreamHandler {
   }
 
   private def childrenOfFolder(asset: DynamoTable, tableName: String, gsiName: String): IO[List[DynamoTable]] = {
-    val childrenParentPath = s"${asset.parentPath}/${asset.id}"
+    val childrenParentPath = s"${asset.parentPath}/${asset.id}".stripPrefix("/")
     dynamoClient
       .queryItems[DynamoTable](tableName, gsiName, "batchId" === asset.batchId and "parentPath" === childrenParentPath)
   }
