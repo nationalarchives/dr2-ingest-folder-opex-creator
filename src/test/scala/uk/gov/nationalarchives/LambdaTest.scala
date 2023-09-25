@@ -224,7 +224,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
     val requestBody = queryEvent.getRequest.getBodyAsString
     val expectedRequestBody =
       """{"TableName":"test-table","IndexName":"test-gsi","KeyConditionExpression":"#A = :batchId AND #B = :parentPath",""" +
-        s""""ExpressionAttributeNames":{"#A":"batchId","#B":"parentPath"},"ExpressionAttributeValues":{":batchId":{"S":"TEST-ID"},":parentPath":{"S":"68b1c80b-36b8-4f0f-94d6-92589002d87e"}}}"""
+        s""""ExpressionAttributeNames":{"#A":"batchId","#B":"parentPath"},"ExpressionAttributeValues":{":batchId":{"S":"TEST-ID"},":parentPath":{"S":"$folderId"}}}"""
     expectedRequestBody should equal(requestBody)
   }
 
