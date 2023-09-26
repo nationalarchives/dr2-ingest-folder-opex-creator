@@ -213,6 +213,21 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
     serveEvents.head.getRequest.getBodyAsString should equal(s"""{"RequestItems":{"test-table":{"Keys":[{"id":{"S":"$folderId"}}]}}}""")
   }
 
+  "handleRequest" should "pass the parent path with no prefixed slash to dynamo if the parent path is empty" in {
+    stubGetRequest(dynamoGetResponse.replace("a/parent/path", ""))
+    stubQueryRequest(emptyDynamoQueryResponse)
+    intercept[Exception] {
+      TestLambda().handleRequest(standardInput, outputStream, null)
+    }
+    val serveEvents = dynamoServer.getAllServeEvents.asScala
+    val queryEvent = serveEvents.head
+    val requestBody = queryEvent.getRequest.getBodyAsString
+    val expectedRequestBody =
+      """{"TableName":"test-table","IndexName":"test-gsi","KeyConditionExpression":"#A = :batchId AND #B = :parentPath",""" +
+        s""""ExpressionAttributeNames":{"#A":"batchId","#B":"parentPath"},"ExpressionAttributeValues":{":batchId":{"S":"TEST-ID"},":parentPath":{"S":"$folderId"}}}"""
+    expectedRequestBody should equal(requestBody)
+  }
+
   "handleRequest" should "pass the correct parameters to dynamo for the query request" in {
     stubGetRequest(dynamoGetResponse)
     stubQueryRequest(emptyDynamoQueryResponse)
