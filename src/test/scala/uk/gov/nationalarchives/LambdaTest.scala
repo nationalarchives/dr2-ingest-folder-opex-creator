@@ -104,7 +104,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |        "S": "$batchId.json"
        |      },
        |      "type": {
-       |        "S": "Folder"
+       |        "S": "ArchiveFolder"
        |      },
        |      "batchId": {
        |        "S": "$batchId"
@@ -145,7 +145,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |          "S": "$folderParentPath"
        |        },
        |        "type": {
-       |          "S": "Folder"
+       |          "S": "ArchiveFolder"
        |        },
        |        "batchId": {
        |          "S": "$batchId"
@@ -195,12 +195,12 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "return an error if the dynamo entry does not have a type of 'folder'" in {
-    stubGetRequest(dynamoGetResponse.replace("Folder", "Asset"))
+    stubGetRequest(dynamoGetResponse.replace("ArchiveFolder", "Asset"))
     stubQueryRequest(emptyDynamoQueryResponse)
     val ex = intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
-    ex.getMessage should equal(s"Object $folderId is of type Asset and not 'folder'")
+    ex.getMessage should equal(s"Object $folderId is of type Asset and not 'ContentFolder' or 'ArchiveFolder'")
   }
 
   "handleRequest" should "pass the correct id to dynamo getItem" in {
