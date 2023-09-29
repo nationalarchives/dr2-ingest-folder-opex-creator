@@ -3,7 +3,7 @@ package uk.gov.nationalarchives
 import cats.effect.unsafe.implicits.global
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
-import uk.gov.nationalarchives.Lambda.{Asset, DynamoTable, Folder}
+import uk.gov.nationalarchives.Lambda.{Asset, DynamoTable, ArchiveFolder, ContentFolder}
 
 import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
@@ -59,7 +59,7 @@ class XMLCreatorTest extends AnyFlatSpec {
     </opex:Transfer>
   </opex:OPEXMetadata>
 
-  val expectedXMLNoHierarchyFolder = <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
+  val expectedXMLNoHierarchyFolder: Elem = <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
     <opex:Properties>
       <opex:Title>name</opex:Title>
       <opex:Description>description</opex:Description>
@@ -87,7 +87,7 @@ class XMLCreatorTest extends AnyFlatSpec {
     UUID.fromString("90730c77-8faa-4dbf-b20d-bba1046dac87"),
     "parentPath",
     "name",
-    Folder,
+    ArchiveFolder,
     "title",
     "description",
     Option(1),
@@ -117,7 +117,7 @@ class XMLCreatorTest extends AnyFlatSpec {
       uuid,
       s"parentPath$suffix",
       s"name$suffix Folder",
-      Folder,
+      ContentFolder,
       s"title$suffix Folder",
       s"description$suffix Folder",
       Option(1),

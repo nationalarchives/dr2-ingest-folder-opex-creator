@@ -24,10 +24,11 @@ import java.util.UUID
 class Lambda extends RequestStreamHandler {
   implicit val typeFormat: Typeclass[Type] = DynamoFormat.xmap[Type, String](
     {
-      case "Folder"   => Right(Folder)
-      case "Asset"    => Right(Asset)
-      case "File"     => Right(File)
-      case typeString => Left(TypeCoercionError(new Exception(s"Type $typeString not found")))
+      case "ArchiveFolder" => Right(ArchiveFolder)
+      case "ContentFolder" => Right(ContentFolder)
+      case "Asset"         => Right(Asset)
+      case "File"          => Right(File)
+      case typeString      => Left(TypeCoercionError(new Exception(s"Type $typeString not found")))
     },
     typeObject => typeObject.toString
   )
@@ -48,15 +49,17 @@ class Lambda extends RequestStreamHandler {
       folder <- IO.fromOption(folderItems.headOption)(
         new Exception(s"No folder found for ${input.id} and ${input.batchId}")
       )
-      _ <- if (folder.`type` != Folder) IO.raiseError(new Exception(s"Object ${folder.id} is of type ${folder.`type`} and not 'folder'")) else IO.unit
+      _ <- if (!isFolder(folder)) IO.raiseError(new Exception(s"Object ${folder.id} is of type ${folder.`type`} and not 'ContentFolder' or 'ArchiveFolder'")) else IO.unit
       children <- childrenOfFolder(folder, config.dynamoTableName, config.dynamoGsiName)
       _ <- IO.fromOption(children.headOption)(new Exception(s"No children found for ${input.id} and ${input.batchId}"))
       assetRows <- getAssetRowsWithFileSize(children, config.bucketName, input.executionName)
-      folderRows <- IO(children.filter(_.`type` == Folder))
+      folderRows <- IO(children.filter(isFolder))
       folderOpex <- xmlCreator.createFolderOpex(folder, assetRows, folderRows)
       _ <- uploadXMLToS3(folderOpex, config.bucketName, generateKey(input.executionName, folder))
     } yield ()
   }.unsafeRunSync()
+
+  private def isFolder(table: DynamoTable) = List(ContentFolder, ArchiveFolder).contains(table.`type`)
 
   private def generateKey(executionName: String, folder: DynamoTable) =
     s"opex/$executionName/${formatParentPath(folder.parentPath)}${folder.id}/${folder.id}.opex"
@@ -96,13 +99,16 @@ object Lambda {
 
   sealed trait Type {
     override def toString: String = this match {
-      case Folder => "Folder"
-      case Asset  => "Asset"
-      case File   => "File"
+      case ArchiveFolder => "ArchiveFolder"
+      case ContentFolder => "ContentFolder"
+      case Asset         => "Asset"
+      case File          => "File"
     }
   }
 
-  case object Folder extends Type
+  case object ArchiveFolder extends Type
+
+  case object ContentFolder extends Type
 
   case object Asset extends Type
 
