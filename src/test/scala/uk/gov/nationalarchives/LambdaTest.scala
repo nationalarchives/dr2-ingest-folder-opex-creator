@@ -268,11 +268,11 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
         <opex:Transfer>
           <opex:Manifest>
             <opex:Folders>
-              <opex:Folder>5edc7a1b-e8c4-4961-a63b-75b2068b69ec.pax</opex:Folder>
-              <opex:Folder>TEST-ID.json</opex:Folder>
+              <opex:Folder>{assetId}.pax</opex:Folder>
+              <opex:Folder>{childId}</opex:Folder>
             </opex:Folders>
             <opex:Files>
-              <opex:File type="metadata" size="100">5edc7a1b-e8c4-4961-a63b-75b2068b69ec.pax.opex</opex:File>
+              <opex:File type="metadata" size="100">{assetId}.pax.opex</opex:File>
             </opex:Files>
           </opex:Manifest>
         </opex:Transfer>
