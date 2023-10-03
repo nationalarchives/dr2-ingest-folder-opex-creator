@@ -23,7 +23,7 @@ lazy val root = (project in file(".")).settings(
   ),
   scalacOptions += "-deprecation"
 )
-(assembly / assemblyJarName) := s"dr2-ingest-folder-opex-creator.jar"
+(assembly / assemblyJarName) := "dr2-ingest-folder-opex-creator.jar"
 
 scalacOptions ++= Seq("-Wunused:imports", "-Werror")
 
