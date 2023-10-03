@@ -22,7 +22,7 @@ class XMLCreator {
         <opex:Manifest>
           <opex:Folders>
             {childAssets.map(asset => <opex:Folder>{asset.id}.pax</opex:Folder>)}
-            {childFolders.map(folder => <opex:Folder>{folder.name}</opex:Folder>)}
+            {childFolders.map(folder => <opex:Folder>{folder.id}</opex:Folder>)}
           </opex:Folders>
           <opex:Files>
             {childAssets.map(asset => <opex:File type="metadata" size={asset.fileSize.getOrElse(0).toString}>{asset.id.toString}.pax.opex</opex:File>)}
