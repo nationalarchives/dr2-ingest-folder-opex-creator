@@ -151,48 +151,48 @@ class XMLCreatorTest extends AnyFlatSpec {
     )
   }
 
-  "createOpex" should "create the correct opex xml, including the Identifier but excluding SourceId, if folder type is not 'ArchiveFolder', " +
+  "createFolderOpex" should "create the correct opex xml, including the Identifier but excluding SourceId, if folder type is not 'ArchiveFolder', " +
     "folder title is not blank but the name and title are not the same" in {
       val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder), childAssets, childFolders).unsafeRunSync()
       val prettyPrinter = new PrettyPrinter(200, 2)
       prettyPrinter.format(expectedStandardNonArchiveFolderXml) should equal(xml)
     }
 
-  "createOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is not 'ArchiveFolder', " +
+  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is not 'ArchiveFolder', " +
     "folder title is not blank but the name and title are the same" in {
       val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder, title = "name"), childAssets, childFolders).unsafeRunSync()
       val prettyPrinter = new PrettyPrinter(200, 2)
       prettyPrinter.format(expectedXMLNoHierarchyFolder) should equal(xml)
     }
 
-  "createOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is not 'ArchiveFolder', " +
+  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is not 'ArchiveFolder', " +
     "folder title is blank and the name and title are not the same" in {
       val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder, title = ""), childAssets, childFolders).unsafeRunSync()
       val prettyPrinter = new PrettyPrinter(200, 2)
       prettyPrinter.format(expectedXMLNoHierarchyFolder) should equal(xml)
     }
 
-  "createOpex" should "create the correct opex xml, including the SourceId and Identifier, if folder type is 'ArchiveFolder', " +
+  "createFolderOpex" should "create the correct opex xml, including the SourceId and Identifier, if folder type is 'ArchiveFolder', " +
     "folder title is not blank and the name and title are not the same " in {
       val xml = XMLCreator().createFolderOpex(folder, childAssets, childFolders).unsafeRunSync()
       val prettyPrinter = new PrettyPrinter(200, 2)
       prettyPrinter.format(expectedStandardArchivedFolderXml) should equal(xml)
     }
 
-  "createOpex" should "create the correct opex xml, using the name if the title is blank" in {
+  "createFolderOpex" should "create the correct opex xml, using the name if the title is blank" in {
     val xml = XMLCreator().createFolderOpex(folder.copy(title = ""), childAssets, childFolders).unsafeRunSync()
     val prettyPrinter = new PrettyPrinter(200, 2)
     prettyPrinter.format(expectedXmlNoTitle) should equal(xml)
   }
 
-  "createOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is 'ArchiveFolder', " +
+  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is 'ArchiveFolder', " +
     "folder title is not blank but the name and title are the same" in {
       val xml = XMLCreator().createFolderOpex(folder.copy(title = "name"), childAssets, childFolders).unsafeRunSync()
       val prettyPrinter = new PrettyPrinter(200, 2)
       prettyPrinter.format(expectedXMLNoHierarchyFolder) should equal(xml)
     }
 
-  "createOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is 'ArchiveFolder', " +
+  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is 'ArchiveFolder', " +
     "folder title is blank and the name and title are not the same" in {
       val xml = XMLCreator().createFolderOpex(folder.copy(title = ""), childAssets, childFolders).unsafeRunSync()
       val prettyPrinter = new PrettyPrinter(200, 2)
