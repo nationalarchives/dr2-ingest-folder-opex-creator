@@ -1,7 +1,7 @@
 package uk.gov.nationalarchives
 
 import cats.effect.IO
-import uk.gov.nationalarchives.Lambda.DynamoTable
+import uk.gov.nationalarchives.Lambda.{ArchiveFolder, DynamoTable}
 
 import scala.xml.PrettyPrinter
 
@@ -18,7 +18,7 @@ class XMLCreator {
         <Identifers>{if (isHierarchyFolder) <Identifer type="Code">{folder.name}</Identifer>}</Identifers>
       </opex:Properties>
       <opex:Transfer>
-        {if (isHierarchyFolder) <opex:SourceID>{folder.name}</opex:SourceID>}
+        {if (isHierarchyFolder && folder.`type` == ArchiveFolder) <opex:SourceID>{folder.name}</opex:SourceID>}
         <opex:Manifest>
           <opex:Folders>
             {childAssets.map(asset => <opex:Folder>{asset.id}.pax</opex:Folder>)}
