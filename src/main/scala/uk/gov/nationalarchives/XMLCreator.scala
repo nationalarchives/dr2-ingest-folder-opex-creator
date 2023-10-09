@@ -8,7 +8,7 @@ import scala.xml.PrettyPrinter
 class XMLCreator {
 
   def createFolderOpex(folder: DynamoTable, childAssets: List[DynamoTable], childFolders: List[DynamoTable], securityDescriptor: String = "open"): IO[String] = IO {
-    val isHierarchyFolder: Boolean = !folder.title.isBlank && folder.title != folder.name
+    val isHierarchyFolder: Boolean = folder.`type` == ArchiveFolder
     val prettyPrinter = new PrettyPrinter(180, 2)
     val xml = <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
       <opex:Properties>
@@ -18,7 +18,7 @@ class XMLCreator {
         <Identifers>{if (isHierarchyFolder) <Identifer type="Code">{folder.name}</Identifer>}</Identifers>
       </opex:Properties>
       <opex:Transfer>
-        {if (isHierarchyFolder && folder.`type` == ArchiveFolder) <opex:SourceID>{folder.name}</opex:SourceID>}
+        {if (isHierarchyFolder) <opex:SourceID>{folder.name}</opex:SourceID>}
         <opex:Manifest>
           <opex:Folders>
             {childAssets.map(asset => <opex:Folder>{asset.id}.pax</opex:Folder>)}

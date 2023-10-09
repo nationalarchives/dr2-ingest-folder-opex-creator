@@ -15,9 +15,7 @@ class XMLCreatorTest extends AnyFlatSpec {
       <opex:Title>title</opex:Title>
       <opex:Description>description</opex:Description>
       <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-      <Identifers>
-        <Identifer type="Code">name</Identifer>
-      </Identifers>
+      <Identifers></Identifers>
     </opex:Properties>
     <opex:Transfer>
       <opex:Manifest>
@@ -66,9 +64,12 @@ class XMLCreatorTest extends AnyFlatSpec {
       <opex:Title>name</opex:Title>
       <opex:Description>description</opex:Description>
       <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-      <Identifers></Identifers>
+      <Identifers>
+        <Identifer type="Code">name</Identifer>
+      </Identifers>
     </opex:Properties>
     <opex:Transfer>
+      <opex:SourceID>name</opex:SourceID>
       <opex:Manifest>
         <opex:Folders>
           <opex:Folder>a814ee41-89f4-4975-8f92-303553fe9a02.pax</opex:Folder>
@@ -153,44 +154,18 @@ class XMLCreatorTest extends AnyFlatSpec {
 
   private val prettyPrinter = new PrettyPrinter(200, 2)
 
-  "createFolderOpex" should "create the correct opex xml, including the Identifier but excluding SourceId, if folder type is not 'ArchiveFolder', " +
-    "folder title is not blank but the name and title are not the same" in {
-      val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder), childAssets, childFolders).unsafeRunSync()
-      xml should equal(prettyPrinter.format(expectedStandardNonArchiveFolderXml))
-    }
+  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier, if folder type is not 'ArchiveFolder'" in {
+    val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder), childAssets, childFolders).unsafeRunSync()
+    xml should equal(prettyPrinter.format(expectedStandardNonArchiveFolderXml))
+  }
 
-  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is not 'ArchiveFolder', " +
-    "folder title is not blank but the name and title are the same" in {
-      val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder, title = "name"), childAssets, childFolders).unsafeRunSync()
-      xml should equal(prettyPrinter.format(expectedXMLNoHierarchyFolder))
-    }
-
-  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is not 'ArchiveFolder', " +
-    "folder title is blank and the name and title are not the same" in {
-      val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder, title = ""), childAssets, childFolders).unsafeRunSync()
-      xml should equal(prettyPrinter.format(expectedXMLNoHierarchyFolder))
-    }
-
-  "createFolderOpex" should "create the correct opex xml, including the SourceId and Identifier, if folder type is 'ArchiveFolder', " +
-    "folder title is not blank and the name and title are not the same " in {
-      val xml = XMLCreator().createFolderOpex(folder, childAssets, childFolders).unsafeRunSync()
-      xml should equal(prettyPrinter.format(expectedStandardArchivedFolderXml))
-    }
+  "createFolderOpex" should "create the correct opex xml, including the SourceId and Identifier, if folder type is 'ArchiveFolder'" in {
+    val xml = XMLCreator().createFolderOpex(folder, childAssets, childFolders).unsafeRunSync()
+    xml should equal(prettyPrinter.format(expectedStandardArchivedFolderXml))
+  }
 
   "createFolderOpex" should "create the correct opex xml, using the name if the title is blank" in {
     val xml = XMLCreator().createFolderOpex(folder.copy(title = ""), childAssets, childFolders).unsafeRunSync()
     xml should equal(prettyPrinter.format(expectedXmlNoTitle))
   }
-
-  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is 'ArchiveFolder', " +
-    "folder title is not blank but the name and title are the same" in {
-      val xml = XMLCreator().createFolderOpex(folder.copy(title = "name"), childAssets, childFolders).unsafeRunSync()
-      xml should equal(prettyPrinter.format(expectedXMLNoHierarchyFolder))
-    }
-
-  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier if folder type is 'ArchiveFolder', " +
-    "folder title is blank and the name and title are not the same" in {
-      val xml = XMLCreator().createFolderOpex(folder.copy(title = ""), childAssets, childFolders).unsafeRunSync()
-      xml should equal(prettyPrinter.format(expectedXMLNoHierarchyFolder))
-    }
 }

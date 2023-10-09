@@ -263,9 +263,12 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
           <opex:Title>Test Name</opex:Title>
           <opex:Description></opex:Description>
           <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-          <Identifers></Identifers>
+          <Identifers>
+            <Identifer type="Code">Test Name</Identifer>
+          </Identifers>
         </opex:Properties>
         <opex:Transfer>
+          <opex:SourceID>Test Name</opex:SourceID>
           <opex:Manifest>
             <opex:Folders>
               <opex:Folder>{assetId}.pax</opex:Folder>
