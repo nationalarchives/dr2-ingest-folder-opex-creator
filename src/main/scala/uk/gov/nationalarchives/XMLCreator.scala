@@ -1,14 +1,14 @@
 package uk.gov.nationalarchives
 
 import cats.effect.IO
-import uk.gov.nationalarchives.Lambda.DynamoTable
+import uk.gov.nationalarchives.Lambda.{ArchiveFolder, DynamoTable}
 
 import scala.xml.PrettyPrinter
 
 class XMLCreator {
 
   def createFolderOpex(folder: DynamoTable, childAssets: List[DynamoTable], childFolders: List[DynamoTable], securityDescriptor: String = "open"): IO[String] = IO {
-    val isHierarchyFolder: Boolean = !folder.title.isBlank && folder.title != folder.name
+    val isHierarchyFolder: Boolean = folder.`type` == ArchiveFolder
     val prettyPrinter = new PrettyPrinter(180, 2)
     val xml = <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
       <opex:Properties>
