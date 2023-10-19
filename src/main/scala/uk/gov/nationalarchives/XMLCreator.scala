@@ -1,21 +1,33 @@
 package uk.gov.nationalarchives
 
 import cats.effect.IO
-import uk.gov.nationalarchives.Lambda.{ArchiveFolder, DynamoTable}
+import uk.gov.nationalarchives.DynamoFormatters._
 
 import scala.xml.PrettyPrinter
 
 class XMLCreator {
 
-  def createFolderOpex(folder: DynamoTable, childAssets: List[DynamoTable], childFolders: List[DynamoTable], securityDescriptor: String = "open"): IO[String] = IO {
+  def createFolderOpex(
+      folder: DynamoTable,
+      childAssets: List[DynamoTable],
+      childFolders: List[DynamoTable],
+      identifiers: List[Identifier],
+      securityDescriptor: String = "open"
+  ): IO[String] = IO {
     val isHierarchyFolder: Boolean = folder.`type` == ArchiveFolder
     val prettyPrinter = new PrettyPrinter(180, 2)
     val xml = <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
       <opex:Properties>
-        <opex:Title>{if (folder.title.isBlank) folder.name else folder.title}</opex:Title>
-        <opex:Description>{folder.description}</opex:Description>
+        <opex:Title>{folder.title.getOrElse(folder.name)}</opex:Title>
+        <opex:Description>{folder.description.getOrElse("")}</opex:Description>
         <opex:SecurityDescriptor>{securityDescriptor}</opex:SecurityDescriptor>
-        <Identifers>{if (isHierarchyFolder) <Identifer type="Code">{folder.name}</Identifer>}</Identifers>
+        {
+      if (identifiers.nonEmpty) {
+        <Identifiers>
+          {identifiers.map(identifier => <Identifier type={identifier.identifierName}>{identifier.value}</Identifier>)}
+        </Identifiers>
+      }
+    }
       </opex:Properties>
       <opex:Transfer>
         {if (isHierarchyFolder) <opex:SourceID>{folder.name}</opex:SourceID>}

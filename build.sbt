@@ -17,6 +17,7 @@ lazy val root = (project in file(".")).settings(
     scalaXml,
     upickle,
     dynamoClient,
+    dynamoFormatters,
     s3Client,
     scalaTest % Test,
     wiremock % Test

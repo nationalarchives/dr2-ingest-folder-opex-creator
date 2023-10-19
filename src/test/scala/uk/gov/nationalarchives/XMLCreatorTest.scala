@@ -3,7 +3,7 @@ package uk.gov.nationalarchives
 import cats.effect.unsafe.implicits.global
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
-import uk.gov.nationalarchives.Lambda.{Asset, DynamoTable, ArchiveFolder, ContentFolder}
+import uk.gov.nationalarchives.DynamoFormatters._
 
 import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
@@ -15,7 +15,6 @@ class XMLCreatorTest extends AnyFlatSpec {
       <opex:Title>title</opex:Title>
       <opex:Description>description</opex:Description>
       <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-      <Identifers></Identifers>
     </opex:Properties>
     <opex:Transfer>
       <opex:Manifest>
@@ -38,9 +37,9 @@ class XMLCreatorTest extends AnyFlatSpec {
       <opex:Title>title</opex:Title>
       <opex:Description>description</opex:Description>
       <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-      <Identifers>
-        <Identifer type="Code">name</Identifer>
-      </Identifers>
+      <Identifiers>
+        <Identifier type="Code">name</Identifier>
+      </Identifiers>
     </opex:Properties>
     <opex:Transfer>
       <opex:SourceID>name</opex:SourceID>
@@ -64,9 +63,6 @@ class XMLCreatorTest extends AnyFlatSpec {
       <opex:Title>name</opex:Title>
       <opex:Description>description</opex:Description>
       <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-      <Identifers>
-        <Identifer type="Code">name</Identifer>
-      </Identifers>
     </opex:Properties>
     <opex:Transfer>
       <opex:SourceID>name</opex:SourceID>
@@ -90,7 +86,6 @@ class XMLCreatorTest extends AnyFlatSpec {
       <opex:Title>name</opex:Title>
       <opex:Description>description</opex:Description>
       <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-      <Identifers></Identifers>
     </opex:Properties>
     <opex:Transfer>
       <opex:Manifest>
@@ -111,11 +106,12 @@ class XMLCreatorTest extends AnyFlatSpec {
   val folder: DynamoTable = DynamoTable(
     "TEST-ID",
     UUID.fromString("90730c77-8faa-4dbf-b20d-bba1046dac87"),
-    "parentPath",
+    Option("parentPath"),
     "name",
     ArchiveFolder,
-    "title",
-    "description",
+    Option("title"),
+    Option("description"),
+    Option(1),
     Option(1),
     Option("checksum"),
     Option("ext")
@@ -126,11 +122,12 @@ class XMLCreatorTest extends AnyFlatSpec {
     DynamoTable(
       "TEST-ID",
       uuid,
-      s"parentPath$suffix",
+      Option(s"parentPath$suffix"),
       s"name$suffix Asset",
       Asset,
-      s"title$suffix Asset",
-      s"description$suffix Asset",
+      Option(s"title$suffix Asset"),
+      Option(s"description$suffix Asset"),
+      Option(1),
       Option(1),
       Option(s"checksum$suffix Asset"),
       Option(s"ext$suffix")
@@ -141,11 +138,12 @@ class XMLCreatorTest extends AnyFlatSpec {
     DynamoTable(
       "TEST-ID",
       uuid,
-      s"parentPath$suffix",
+      Option(s"parentPath$suffix"),
       s"name$suffix Folder",
       ContentFolder,
-      s"title$suffix Folder",
-      s"description$suffix Folder",
+      Option(s"title$suffix Folder"),
+      Option(s"description$suffix Folder"),
+      Option(1),
       Option(1),
       Option(s"checksum$suffix Folder"),
       Option(s"ext$suffix")
@@ -154,18 +152,18 @@ class XMLCreatorTest extends AnyFlatSpec {
 
   private val prettyPrinter = new PrettyPrinter(200, 2)
 
-  "createFolderOpex" should "create the correct opex xml, excluding the SourceId and Identifier, if folder type is not 'ArchiveFolder'" in {
-    val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder), childAssets, childFolders).unsafeRunSync()
+  "createFolderOpex" should "create the correct opex xml, excluding the SourceId, if folder type is not 'ArchiveFolder' and there are no identifiers" in {
+    val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder), childAssets, childFolders, Nil).unsafeRunSync()
     xml should equal(prettyPrinter.format(expectedStandardNonArchiveFolderXml))
   }
 
-  "createFolderOpex" should "create the correct opex xml, including the SourceId and Identifier, if folder type is 'ArchiveFolder'" in {
-    val xml = XMLCreator().createFolderOpex(folder, childAssets, childFolders).unsafeRunSync()
+  "createFolderOpex" should "create the correct opex xml, including the SourceId, if folder type is 'ArchiveFolder' and there are identifiers" in {
+    val xml = XMLCreator().createFolderOpex(folder, childAssets, childFolders, List(Identifier("Code", "name"))).unsafeRunSync()
     xml should equal(prettyPrinter.format(expectedStandardArchivedFolderXml))
   }
 
   "createFolderOpex" should "create the correct opex xml, using the name if the title is blank" in {
-    val xml = XMLCreator().createFolderOpex(folder.copy(title = ""), childAssets, childFolders).unsafeRunSync()
+    val xml = XMLCreator().createFolderOpex(folder.copy(title = None), childAssets, childFolders, Nil).unsafeRunSync()
     xml should equal(prettyPrinter.format(expectedXmlNoTitle))
   }
 }

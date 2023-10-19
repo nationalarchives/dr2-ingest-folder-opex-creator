@@ -4,37 +4,22 @@ import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import com.amazonaws.services.lambda.runtime.{Context, RequestStreamHandler}
-import org.scanamo.{DynamoFormat, TypeCoercionError}
-import org.scanamo.generic.semiauto._
+import fs2.Stream
+import fs2.interop.reactivestreams._
 import org.scanamo.syntax._
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 import pureconfig.module.catseffect.syntax._
 import software.amazon.awssdk.transfer.s3.model.CompletedUpload
+import uk.gov.nationalarchives.DynamoFormatters._
 import uk.gov.nationalarchives.DADynamoDBClient._
 import uk.gov.nationalarchives.Lambda._
 import upickle.default._
-import fs2.Stream
-import fs2.interop.reactivestreams._
-import org.scanamo.generic.auto.Typeclass
 
 import java.io.{InputStream, OutputStream}
 import java.util.UUID
 
 class Lambda extends RequestStreamHandler {
-  implicit val typeFormat: Typeclass[Type] = DynamoFormat.xmap[Type, String](
-    {
-      case "ArchiveFolder" => Right(ArchiveFolder)
-      case "ContentFolder" => Right(ContentFolder)
-      case "Asset"         => Right(Asset)
-      case "File"          => Right(File)
-      case typeString      => Left(TypeCoercionError(new Exception(s"Type $typeString not found")))
-    },
-    typeObject => typeObject.toString
-  )
-
-  implicit val dynamoTableFormat: Typeclass[DynamoTable] = deriveDynamoFormat[DynamoTable]
-  implicit val pkFormat: Typeclass[PartitionKey] = deriveDynamoFormat[PartitionKey]
 
   private val xmlCreator: XMLCreator = XMLCreator()
   val dynamoClient: DADynamoDBClient[IO] = DADynamoDBClient[IO]()
@@ -54,7 +39,7 @@ class Lambda extends RequestStreamHandler {
       _ <- IO.fromOption(children.headOption)(new Exception(s"No children found for ${input.id} and ${input.batchId}"))
       assetRows <- getAssetRowsWithFileSize(children, config.bucketName, input.executionName)
       folderRows <- IO(children.filter(isFolder))
-      folderOpex <- xmlCreator.createFolderOpex(folder, assetRows, folderRows)
+      folderOpex <- xmlCreator.createFolderOpex(folder, assetRows, folderRows, folder.identifiers)
       _ <- uploadXMLToS3(folderOpex, config.bucketName, generateKey(input.executionName, folder))
     } yield ()
   }.unsafeRunSync()
@@ -64,7 +49,7 @@ class Lambda extends RequestStreamHandler {
   private def generateKey(executionName: String, folder: DynamoTable) =
     s"opex/$executionName/${formatParentPath(folder.parentPath)}${folder.id}/${folder.id}.opex"
 
-  private def formatParentPath(parentPath: String): String = if (parentPath.isBlank) "" else s"$parentPath/"
+  private def formatParentPath(potentialParentPath: Option[String]): String = potentialParentPath.map(parentPath => s"$parentPath/").getOrElse("")
 
   private def uploadXMLToS3(xmlString: String, destinationBucket: String, key: String): IO[CompletedUpload] =
     Stream.emits[IO, Byte](xmlString.getBytes).chunks.map(_.toByteBuffer).toUnicastPublisher.use { publisher =>
@@ -75,7 +60,7 @@ class Lambda extends RequestStreamHandler {
     children
       .filter(_.`type` == Asset)
       .map { asset =>
-        val key = s"opex/$executionName/${asset.parentPath}/${asset.id}.pax.opex"
+        val key = s"opex/$executionName/${formatParentPath(asset.parentPath)}${asset.id}.pax.opex"
         s3Client
           .headObject(bucketName, key)
           .map(headResponse => asset.copy(fileSize = Option(headResponse.contentLength())))
@@ -84,7 +69,7 @@ class Lambda extends RequestStreamHandler {
   }
 
   private def childrenOfFolder(asset: DynamoTable, tableName: String, gsiName: String): IO[List[DynamoTable]] = {
-    val childrenParentPath = s"${asset.parentPath}/${asset.id}".stripPrefix("/")
+    val childrenParentPath = s"${asset.parentPath.getOrElse("")}/${asset.id}".stripPrefix("/")
     dynamoClient
       .queryItems[DynamoTable](tableName, gsiName, "batchId" === asset.batchId and "parentPath" === childrenParentPath)
   }
@@ -97,35 +82,4 @@ object Lambda {
 
   case class Input(id: UUID, batchId: String, executionName: String)
 
-  sealed trait Type {
-    override def toString: String = this match {
-      case ArchiveFolder => "ArchiveFolder"
-      case ContentFolder => "ContentFolder"
-      case Asset         => "Asset"
-      case File          => "File"
-    }
-  }
-
-  case object ArchiveFolder extends Type
-
-  case object ContentFolder extends Type
-
-  case object Asset extends Type
-
-  case object File extends Type
-
-  case class DynamoTable(
-      batchId: String,
-      id: UUID,
-      parentPath: String,
-      name: String,
-      `type`: Type,
-      title: String,
-      description: String,
-      fileSize: Option[Long] = None,
-      checksumSha256: Option[String] = None,
-      fileExtension: Option[String] = None
-  )
-
-  case class PartitionKey(id: UUID)
 }
