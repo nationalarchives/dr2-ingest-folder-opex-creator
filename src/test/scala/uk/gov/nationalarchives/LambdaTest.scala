@@ -149,6 +149,9 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |        },
        |        "batchId": {
        |          "S": "$batchId"
+       |        },
+       |        "id_Code": {
+       |          "S": "Code"
        |        }
        |      }
        |    ]
@@ -263,9 +266,9 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
           <opex:Title>Test Name</opex:Title>
           <opex:Description></opex:Description>
           <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-          <Identifers>
-            <Identifer type="Code">Test Name</Identifer>
-          </Identifers>
+          <Identifiers>
+            <Identifier type="Code">Code</Identifier>
+          </Identifiers>
         </opex:Properties>
         <opex:Transfer>
           <opex:SourceID>Test Name</opex:SourceID>
