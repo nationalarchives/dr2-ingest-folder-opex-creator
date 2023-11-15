@@ -261,7 +261,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   "handleRequest" should "upload the correct body to S3" in {
     val prettyPrinter = new PrettyPrinter(180, 2)
     val expectedResponseXML =
-      <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
+      <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.2">
         <opex:Properties>
           <opex:Title>Test Name</opex:Title>
           <opex:Description></opex:Description>
