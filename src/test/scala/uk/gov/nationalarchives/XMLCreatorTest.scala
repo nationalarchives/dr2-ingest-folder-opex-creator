@@ -9,9 +9,9 @@ import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
 
 class XMLCreatorTest extends AnyFlatSpec {
-  private val opexSchema = "http://www.openpreservationexchange.org/opex/v1.2"
+  private val opexNamespace = "http://www.openpreservationexchange.org/opex/v1.2"
 
-  val expectedStandardNonArchiveFolderXml: Elem = <opex:OPEXMetadata xmlns:opex={opexSchema}>
+  val expectedStandardNonArchiveFolderXml: Elem = <opex:OPEXMetadata xmlns:opex={opexNamespace}>
     <opex:Properties>
       <opex:Title>title</opex:Title>
       <opex:Description>description</opex:Description>
@@ -33,7 +33,7 @@ class XMLCreatorTest extends AnyFlatSpec {
     </opex:Transfer>
   </opex:OPEXMetadata>
 
-  val expectedStandardArchivedFolderXml: Elem = <opex:OPEXMetadata xmlns:opex={opexSchema}>
+  val expectedStandardArchivedFolderXml: Elem = <opex:OPEXMetadata xmlns:opex={opexNamespace}>
     <opex:Properties>
       <opex:Title>title</opex:Title>
       <opex:Description>description</opex:Description>
@@ -59,7 +59,7 @@ class XMLCreatorTest extends AnyFlatSpec {
     </opex:Transfer>
   </opex:OPEXMetadata>
 
-  val expectedXmlNoTitle: Elem = <opex:OPEXMetadata xmlns:opex={opexSchema}>
+  val expectedXmlNoTitle: Elem = <opex:OPEXMetadata xmlns:opex={opexNamespace}>
     <opex:Properties>
       <opex:Title>name</opex:Title>
       <opex:Description>description</opex:Description>
@@ -82,7 +82,7 @@ class XMLCreatorTest extends AnyFlatSpec {
     </opex:Transfer>
   </opex:OPEXMetadata>
 
-  val expectedXMLNoHierarchyFolder: Elem = <opex:OPEXMetadata xmlns:opex={opexSchema}>
+  val expectedXMLNoHierarchyFolder: Elem = <opex:OPEXMetadata xmlns:opex={opexNamespace}>
     <opex:Properties>
       <opex:Title>name</opex:Title>
       <opex:Description>description</opex:Description>
