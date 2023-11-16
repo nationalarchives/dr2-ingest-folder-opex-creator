@@ -6,6 +6,7 @@ import uk.gov.nationalarchives.DynamoFormatters._
 import scala.xml.PrettyPrinter
 
 class XMLCreator {
+  private val opexNamespace = "http://www.openpreservationexchange.org/opex/v1.2"
 
   def createFolderOpex(
       folder: DynamoTable,
@@ -16,7 +17,7 @@ class XMLCreator {
   ): IO[String] = IO {
     val isHierarchyFolder: Boolean = folder.`type` == ArchiveFolder
     val prettyPrinter = new PrettyPrinter(180, 2)
-    val xml = <opex:OPEXMetadata xmlns:opex="http://www.openpreservationexchange.org/opex/v1.0">
+    val xml = <opex:OPEXMetadata xmlns:opex={opexNamespace}>
       <opex:Properties>
         <opex:Title>{folder.title.getOrElse(folder.name)}</opex:Title>
         <opex:Description>{folder.description.getOrElse("")}</opex:Description>
