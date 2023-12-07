@@ -85,15 +85,6 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |  "Count": 2,
        |  "Items": [
        |    {
-       |      "checksumSha256": {
-       |        "S": "checksum"
-       |      },
-       |      "fileExtension": {
-       |        "S": "json"
-       |      },
-       |      "fileSize": {
-       |        "N": "1"
-       |      },
        |      "id": {
        |        "S": "$childId"
        |      },
@@ -104,7 +95,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |        "S": "$batchId.json"
        |      },
        |      "type": {
-       |        "S": "ArchiveFolder"
+       |        "S": "ContentFolder"
        |      },
        |      "batchId": {
        |        "S": "$batchId"
@@ -125,6 +116,35 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |      },
        |      "batchId": {
        |        "S": "$batchId"
+       |      },
+       |      "transferringBody": {
+       |        "S": "transferringBody"
+       |      },
+       |      "transferCompleteDatetime": {
+       |        "S": "2023-12-07T17:22:23.605036797Z"
+       |      },
+       |      "upstreamSystem": {
+       |        "S": "upstreamSystem"
+       |      },
+       |      "digitalAssetSource": {
+       |        "S": "digitalAssetSource"
+       |      },
+       |      "digitalAssetSubtype": {
+       |        "S": "digitalAssetSubtype"
+       |      },
+       |      "originalFiles": {
+       |        "L": [
+       |        {
+       |          "S": "${UUID.randomUUID()}"
+       |        }
+       |       ]
+       |      },
+       |      "originalMetadataFiles": {
+       |        "L": [
+       |          {
+       |            "S": "${UUID.randomUUID()}"
+       |          }
+       |        ]
        |      }
        |    }
        |]

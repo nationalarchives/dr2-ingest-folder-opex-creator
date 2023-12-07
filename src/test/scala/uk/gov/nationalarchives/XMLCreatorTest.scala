@@ -4,6 +4,7 @@ import cats.effect.unsafe.implicits.global
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import uk.gov.nationalarchives.DynamoFormatters._
+import uk.gov.nationalarchives.Lambda.{FolderOrAssetTable, AssetOrFileWithFileSize}
 
 import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
@@ -104,7 +105,7 @@ class XMLCreatorTest extends AnyFlatSpec {
     </opex:Transfer>
   </opex:OPEXMetadata>
 
-  val folder: DynamoTable = DynamoTable(
+  val folder: ArchiveFolderDynamoTable = ArchiveFolderDynamoTable(
     "TEST-ID",
     UUID.fromString("90730c77-8faa-4dbf-b20d-bba1046dac87"),
     Option("parentPath"),
@@ -112,31 +113,28 @@ class XMLCreatorTest extends AnyFlatSpec {
     ArchiveFolder,
     Option("title"),
     Option("description"),
-    Option(1),
-    Option(1),
-    Option("checksum"),
-    Option("ext")
+    Nil
   )
   val assetUuids: List[UUID] = List(UUID.fromString("a814ee41-89f4-4975-8f92-303553fe9a02"), UUID.fromString("9ecbba86-437f-42c6-aeba-e28b678bbf4c"))
   val folderUuids: List[UUID] = List(UUID.fromString("7fcd94a9-be3f-456d-875f-bc697f7ed106"), UUID.fromString("9ecbba86-437f-42c6-aeba-e28b678bbf4c"))
-  val childAssets: List[DynamoTable] = assetUuids.zipWithIndex.map { case (uuid, suffix) =>
-    DynamoTable(
-      "TEST-ID",
-      uuid,
-      Option(s"parentPath$suffix"),
-      s"name$suffix Asset",
-      Asset,
-      Option(s"title$suffix Asset"),
-      Option(s"description$suffix Asset"),
-      Option(1),
-      Option(1),
-      Option(s"checksum$suffix Asset"),
-      Option(s"ext$suffix")
+  val childAssets: List[AssetOrFileWithFileSize] = assetUuids.zipWithIndex.map { case (uuid, suffix) =>
+    AssetOrFileWithFileSize(
+      FolderOrAssetTable(
+        "TEST-ID",
+        uuid,
+        Option(s"parentPath$suffix"),
+        s"name$suffix Asset",
+        Asset,
+        Option(s"title$suffix Asset"),
+        Option(s"description$suffix Asset"),
+        Nil
+      ),
+      1
     )
   }
 
-  val childFolders: List[DynamoTable] = folderUuids.zipWithIndex.map { case (uuid, suffix) =>
-    DynamoTable(
+  val childFolders: List[FolderOrAssetTable] = folderUuids.zipWithIndex.map { case (uuid, suffix) =>
+    FolderOrAssetTable(
       "TEST-ID",
       uuid,
       Option(s"parentPath$suffix"),
@@ -144,10 +142,7 @@ class XMLCreatorTest extends AnyFlatSpec {
       ContentFolder,
       Option(s"title$suffix Folder"),
       Option(s"description$suffix Folder"),
-      Option(1),
-      Option(1),
-      Option(s"checksum$suffix Folder"),
-      Option(s"ext$suffix")
+      Nil
     )
   }
 
