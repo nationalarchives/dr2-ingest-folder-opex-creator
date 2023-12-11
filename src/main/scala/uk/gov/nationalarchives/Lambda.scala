@@ -39,7 +39,7 @@ class Lambda extends RequestStreamHandler {
           rowType match {
             case "Asset"                           => toFolderOrAssetTable[AssetDynamoTable](dynamoValue)
             case "ArchiveFolder" | "ContentFolder" => toFolderOrAssetTable[ArchiveFolderDynamoTable](dynamoValue)
-            case _                                 => Left(TypeCoercionError(new RuntimeException("Row is not an 'Asset' or a 'File'")))
+            case _                                 => Left(TypeCoercionError(new RuntimeException("Row is not an 'Asset' or a 'Folder'")))
           }
         case None => Left[DynamoReadError, FolderOrAssetTable](MissingProperty)
       }
@@ -79,16 +79,14 @@ class Lambda extends RequestStreamHandler {
       s3Client.upload(destinationBucket, key, xmlString.getBytes.length, publisher)
     }
 
-  private def getAssetRowsWithFileSize(children: List[FolderOrAssetTable], bucketName: String, executionName: String): IO[List[AssetOrFileWithFileSize]] = {
-    children
-      .filter(_.`type` == Asset)
-      .map { asset =>
+  private def getAssetRowsWithFileSize(children: List[FolderOrAssetTable], bucketName: String, executionName: String): IO[List[AssetWithFileSize]] = {
+    children.collect {
+      case child @ asset if child.`type` == Asset =>
         val key = s"opex/$executionName/${formatParentPath(asset.parentPath)}${asset.id}.pax.opex"
         s3Client
           .headObject(bucketName, key)
-          .map(headResponse => AssetOrFileWithFileSize(asset, headResponse.contentLength()))
-      }
-      .sequence
+          .map(headResponse => AssetWithFileSize(asset, headResponse.contentLength()))
+    }.sequence
   }
 
   private def childrenOfFolder(asset: ArchiveFolderDynamoTable, tableName: String, gsiName: String): IO[List[FolderOrAssetTable]] = {
@@ -105,7 +103,7 @@ object Lambda {
 
   case class Input(id: UUID, batchId: String, executionName: String)
 
-  case class AssetOrFileWithFileSize(asset: FolderOrAssetTable, fileSize: Long)
+  case class AssetWithFileSize(asset: FolderOrAssetTable, fileSize: Long)
 
   case class FolderOrAssetTable(
       batchId: String,

@@ -2,7 +2,7 @@ package uk.gov.nationalarchives
 
 import cats.effect.IO
 import uk.gov.nationalarchives.DynamoFormatters._
-import uk.gov.nationalarchives.Lambda.{FolderOrAssetTable, AssetOrFileWithFileSize}
+import uk.gov.nationalarchives.Lambda.{FolderOrAssetTable, AssetWithFileSize}
 
 import scala.xml.PrettyPrinter
 
@@ -11,7 +11,7 @@ class XMLCreator {
 
   def createFolderOpex(
       folder: ArchiveFolderDynamoTable,
-      childAssets: List[AssetOrFileWithFileSize],
+      childAssets: List[AssetWithFileSize],
       childFolders: List[FolderOrAssetTable],
       identifiers: List[Identifier],
       securityDescriptor: String = "open"

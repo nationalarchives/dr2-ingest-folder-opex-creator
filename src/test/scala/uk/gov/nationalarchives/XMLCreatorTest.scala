@@ -4,7 +4,7 @@ import cats.effect.unsafe.implicits.global
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers._
 import uk.gov.nationalarchives.DynamoFormatters._
-import uk.gov.nationalarchives.Lambda.{FolderOrAssetTable, AssetOrFileWithFileSize}
+import uk.gov.nationalarchives.Lambda.{FolderOrAssetTable, AssetWithFileSize}
 
 import java.util.UUID
 import scala.xml.{Elem, PrettyPrinter}
@@ -105,7 +105,7 @@ class XMLCreatorTest extends AnyFlatSpec {
     </opex:Transfer>
   </opex:OPEXMetadata>
 
-  val folder: ArchiveFolderDynamoTable = ArchiveFolderDynamoTable(
+  val archiveFolder: ArchiveFolderDynamoTable = ArchiveFolderDynamoTable(
     "TEST-ID",
     UUID.fromString("90730c77-8faa-4dbf-b20d-bba1046dac87"),
     Option("parentPath"),
@@ -117,8 +117,8 @@ class XMLCreatorTest extends AnyFlatSpec {
   )
   val assetUuids: List[UUID] = List(UUID.fromString("a814ee41-89f4-4975-8f92-303553fe9a02"), UUID.fromString("9ecbba86-437f-42c6-aeba-e28b678bbf4c"))
   val folderUuids: List[UUID] = List(UUID.fromString("7fcd94a9-be3f-456d-875f-bc697f7ed106"), UUID.fromString("9ecbba86-437f-42c6-aeba-e28b678bbf4c"))
-  val childAssets: List[AssetOrFileWithFileSize] = assetUuids.zipWithIndex.map { case (uuid, suffix) =>
-    AssetOrFileWithFileSize(
+  val childAssets: List[AssetWithFileSize] = assetUuids.zipWithIndex.map { case (uuid, suffix) =>
+    AssetWithFileSize(
       FolderOrAssetTable(
         "TEST-ID",
         uuid,
@@ -149,17 +149,17 @@ class XMLCreatorTest extends AnyFlatSpec {
   private val prettyPrinter = new PrettyPrinter(200, 2)
 
   "createFolderOpex" should "create the correct opex xml, excluding the SourceId, if folder type is not 'ArchiveFolder' and there are no identifiers" in {
-    val xml = XMLCreator().createFolderOpex(folder.copy(`type` = ContentFolder), childAssets, childFolders, Nil).unsafeRunSync()
+    val xml = XMLCreator().createFolderOpex(archiveFolder.copy(`type` = ContentFolder), childAssets, childFolders, Nil).unsafeRunSync()
     xml should equal(prettyPrinter.format(expectedStandardNonArchiveFolderXml))
   }
 
   "createFolderOpex" should "create the correct opex xml, including the SourceId, if folder type is 'ArchiveFolder' and there are identifiers" in {
-    val xml = XMLCreator().createFolderOpex(folder, childAssets, childFolders, List(Identifier("Code", "name"))).unsafeRunSync()
+    val xml = XMLCreator().createFolderOpex(archiveFolder, childAssets, childFolders, List(Identifier("Code", "name"))).unsafeRunSync()
     xml should equal(prettyPrinter.format(expectedStandardArchivedFolderXml))
   }
 
   "createFolderOpex" should "create the correct opex xml, using the name if the title is blank" in {
-    val xml = XMLCreator().createFolderOpex(folder.copy(title = None), childAssets, childFolders, Nil).unsafeRunSync()
+    val xml = XMLCreator().createFolderOpex(archiveFolder.copy(title = None), childAssets, childFolders, Nil).unsafeRunSync()
     xml should equal(prettyPrinter.format(expectedXmlNoTitle))
   }
 }
