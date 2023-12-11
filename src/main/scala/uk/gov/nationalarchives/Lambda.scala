@@ -6,6 +6,7 @@ import cats.implicits._
 import com.amazonaws.services.lambda.runtime.{Context, RequestStreamHandler}
 import fs2.Stream
 import fs2.interop.reactivestreams._
+import org.scanamo.{DynamoFormat, DynamoReadError, DynamoValue, MissingProperty, TypeCoercionError}
 import org.scanamo.syntax._
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
@@ -18,6 +19,7 @@ import upickle.default._
 
 import java.io.{InputStream, OutputStream}
 import java.util.UUID
+import scala.jdk.CollectionConverters.MapHasAsScala
 
 class Lambda extends RequestStreamHandler {
 
@@ -25,26 +27,47 @@ class Lambda extends RequestStreamHandler {
   val dynamoClient: DADynamoDBClient[IO] = DADynamoDBClient[IO]()
   val s3Client: DAS3Client[IO] = DAS3Client[IO]()
 
+  private def toFolderOrAssetTable[T <: DynamoTable](dynamoValue: DynamoValue)(implicit dynamoFormat: DynamoFormat[T]): Either[DynamoReadError, FolderOrAssetTable] =
+    dynamoFormat.read(dynamoValue).map { table =>
+      FolderOrAssetTable(table.batchId, table.id, table.parentPath, table.name, table.`type`, table.title, table.description, table.identifiers)
+    }
+
+  implicit val folderOrAssetFormat: DynamoFormat[FolderOrAssetTable] = new DynamoFormat[FolderOrAssetTable] {
+    override def read(dynamoValue: DynamoValue): Either[DynamoReadError, FolderOrAssetTable] =
+      dynamoValue.toAttributeValue.m().asScala.toMap.get("type").map(_.s()) match {
+        case Some(rowType) =>
+          rowType match {
+            case "Asset"                           => toFolderOrAssetTable[AssetDynamoTable](dynamoValue)
+            case "ArchiveFolder" | "ContentFolder" => toFolderOrAssetTable[ArchiveFolderDynamoTable](dynamoValue)
+            case _                                 => Left(TypeCoercionError(new RuntimeException("Row is not an 'Asset' or a 'Folder'")))
+          }
+        case None => Left[DynamoReadError, FolderOrAssetTable](MissingProperty)
+      }
+
+    // We're not using write but we have to have this overridden
+    override def write(t: FolderOrAssetTable): DynamoValue = DynamoValue.nil
+  }
+
   override def handleRequest(inputStream: InputStream, output: OutputStream, context: Context): Unit = {
     val inputString = inputStream.readAllBytes().map(_.toChar).mkString
     val input = read[Input](inputString)
     for {
       config <- ConfigSource.default.loadF[IO, Config]()
-      folderItems <- dynamoClient.getItems[DynamoTable, PartitionKey](List(PartitionKey(input.id)), config.dynamoTableName)
+      folderItems <- dynamoClient.getItems[ArchiveFolderDynamoTable, PartitionKey](List(PartitionKey(input.id)), config.dynamoTableName)
       folder <- IO.fromOption(folderItems.headOption)(
         new Exception(s"No folder found for ${input.id} and ${input.batchId}")
       )
-      _ <- if (!isFolder(folder)) IO.raiseError(new Exception(s"Object ${folder.id} is of type ${folder.`type`} and not 'ContentFolder' or 'ArchiveFolder'")) else IO.unit
+      _ <- if (!isFolder(folder.`type`)) IO.raiseError(new Exception(s"Object ${folder.id} is of type ${folder.`type`} and not 'ContentFolder' or 'ArchiveFolder'")) else IO.unit
       children <- childrenOfFolder(folder, config.dynamoTableName, config.dynamoGsiName)
       _ <- IO.fromOption(children.headOption)(new Exception(s"No children found for ${input.id} and ${input.batchId}"))
       assetRows <- getAssetRowsWithFileSize(children, config.bucketName, input.executionName)
-      folderRows <- IO(children.filter(isFolder))
+      folderRows <- IO(children.filter(child => isFolder(child.`type`)))
       folderOpex <- xmlCreator.createFolderOpex(folder, assetRows, folderRows, folder.identifiers)
       _ <- uploadXMLToS3(folderOpex, config.bucketName, generateKey(input.executionName, folder))
     } yield ()
   }.unsafeRunSync()
 
-  private def isFolder(table: DynamoTable) = List(ContentFolder, ArchiveFolder).contains(table.`type`)
+  private def isFolder(rowType: Type) = List(ContentFolder, ArchiveFolder).contains(rowType)
 
   private def generateKey(executionName: String, folder: DynamoTable) =
     s"opex/$executionName/${formatParentPath(folder.parentPath)}${folder.id}/${folder.id}.opex"
@@ -56,22 +79,20 @@ class Lambda extends RequestStreamHandler {
       s3Client.upload(destinationBucket, key, xmlString.getBytes.length, publisher)
     }
 
-  private def getAssetRowsWithFileSize(children: List[DynamoTable], bucketName: String, executionName: String): IO[List[DynamoTable]] = {
-    children
-      .filter(_.`type` == Asset)
-      .map { asset =>
+  private def getAssetRowsWithFileSize(children: List[FolderOrAssetTable], bucketName: String, executionName: String): IO[List[AssetWithFileSize]] = {
+    children.collect {
+      case child @ asset if child.`type` == Asset =>
         val key = s"opex/$executionName/${formatParentPath(asset.parentPath)}${asset.id}.pax.opex"
         s3Client
           .headObject(bucketName, key)
-          .map(headResponse => asset.copy(fileSize = Option(headResponse.contentLength())))
-      }
-      .sequence
+          .map(headResponse => AssetWithFileSize(asset, headResponse.contentLength()))
+    }.sequence
   }
 
-  private def childrenOfFolder(asset: DynamoTable, tableName: String, gsiName: String): IO[List[DynamoTable]] = {
+  private def childrenOfFolder(asset: ArchiveFolderDynamoTable, tableName: String, gsiName: String): IO[List[FolderOrAssetTable]] = {
     val childrenParentPath = s"${asset.parentPath.getOrElse("")}/${asset.id}".stripPrefix("/")
     dynamoClient
-      .queryItems[DynamoTable](tableName, gsiName, "batchId" === asset.batchId and "parentPath" === childrenParentPath)
+      .queryItems[FolderOrAssetTable](tableName, gsiName, "batchId" === asset.batchId and "parentPath" === childrenParentPath)
   }
 }
 
@@ -81,5 +102,18 @@ object Lambda {
   private case class Config(dynamoTableName: String, bucketName: String, dynamoGsiName: String)
 
   case class Input(id: UUID, batchId: String, executionName: String)
+
+  case class AssetWithFileSize(asset: FolderOrAssetTable, fileSize: Long)
+
+  case class FolderOrAssetTable(
+      batchId: String,
+      id: UUID,
+      parentPath: Option[String],
+      name: String,
+      `type`: Type,
+      title: Option[String],
+      description: Option[String],
+      identifiers: List[Identifier]
+  )
 
 }
