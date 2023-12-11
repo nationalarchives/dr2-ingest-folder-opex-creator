@@ -39,9 +39,9 @@ class XMLCreatorTest extends AnyFlatSpec {
       <opex:Title>title</opex:Title>
       <opex:Description>description</opex:Description>
       <opex:SecurityDescriptor>open</opex:SecurityDescriptor>
-      <Identifiers>
-        <Identifier type="Code">name</Identifier>
-      </Identifiers>
+      <opex:Identifiers>
+        <opex:Identifier type="Code">name</opex:Identifier>
+      </opex:Identifiers>
     </opex:Properties>
     <opex:Transfer>
       <opex:SourceID>name</opex:SourceID>
