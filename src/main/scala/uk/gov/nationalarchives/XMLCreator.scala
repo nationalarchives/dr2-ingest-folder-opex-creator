@@ -2,6 +2,7 @@ package uk.gov.nationalarchives
 
 import cats.effect.IO
 import uk.gov.nationalarchives.DynamoFormatters._
+import uk.gov.nationalarchives.Lambda.{FolderOrAssetTable, AssetWithFileSize}
 
 import scala.xml.PrettyPrinter
 
@@ -9,9 +10,9 @@ class XMLCreator {
   private val opexNamespace = "http://www.openpreservationexchange.org/opex/v1.2"
 
   def createFolderOpex(
-      folder: DynamoTable,
-      childAssets: List[DynamoTable],
-      childFolders: List[DynamoTable],
+      folder: ArchiveFolderDynamoTable,
+      childAssets: List[AssetWithFileSize],
+      childFolders: List[FolderOrAssetTable],
       identifiers: List[Identifier],
       securityDescriptor: String = "open"
   ): IO[String] = IO {
@@ -34,11 +35,11 @@ class XMLCreator {
         {if (isHierarchyFolder) <opex:SourceID>{folder.name}</opex:SourceID>}
         <opex:Manifest>
           <opex:Folders>
-            {childAssets.map(asset => <opex:Folder>{asset.id}.pax</opex:Folder>)}
+            {childAssets.map(assetWithFileSize => <opex:Folder>{assetWithFileSize.asset.id}.pax</opex:Folder>)}
             {childFolders.map(folder => <opex:Folder>{folder.id}</opex:Folder>)}
           </opex:Folders>
           <opex:Files>
-            {childAssets.map(asset => <opex:File type="metadata" size={asset.fileSize.getOrElse(0).toString}>{asset.id.toString}.pax.opex</opex:File>)}
+            {childAssets.map(assetWithFileSize => <opex:File type="metadata" size={assetWithFileSize.fileSize.toString}>{assetWithFileSize.asset.id.toString}.pax.opex</opex:File>)}
           </opex:Files>
         </opex:Manifest>
       </opex:Transfer>

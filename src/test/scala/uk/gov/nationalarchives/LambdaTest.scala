@@ -52,14 +52,14 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
     }
   }
 
-  def stubGetRequest(batchGetResponse: String): Unit =
+  def stubBatchGetRequest(batchGetResponse: String): Unit =
     dynamoServer.stubFor(
       post(urlEqualTo("/"))
         .withRequestBody(matchingJsonPath("$.RequestItems", containing("test-table")))
         .willReturn(ok().withBody(batchGetResponse))
     )
 
-  def stubQueryRequest(queryResponse: String): Unit =
+  def stubDynamoQueryRequest(queryResponse: String): Unit =
     dynamoServer.stubFor(
       post(urlEqualTo("/"))
         .withRequestBody(matchingJsonPath("$.TableName", equalTo("test-table")))
@@ -85,15 +85,6 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |  "Count": 2,
        |  "Items": [
        |    {
-       |      "checksumSha256": {
-       |        "S": "checksum"
-       |      },
-       |      "fileExtension": {
-       |        "S": "json"
-       |      },
-       |      "fileSize": {
-       |        "N": "1"
-       |      },
        |      "id": {
        |        "S": "$childId"
        |      },
@@ -104,7 +95,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |        "S": "$batchId.json"
        |      },
        |      "type": {
-       |        "S": "ArchiveFolder"
+       |        "S": "ContentFolder"
        |      },
        |      "batchId": {
        |        "S": "$batchId"
@@ -125,6 +116,35 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
        |      },
        |      "batchId": {
        |        "S": "$batchId"
+       |      },
+       |      "transferringBody": {
+       |        "S": "transferringBody"
+       |      },
+       |      "transferCompleteDatetime": {
+       |        "S": "2023-12-07T17:22:23.605036797Z"
+       |      },
+       |      "upstreamSystem": {
+       |        "S": "upstreamSystem"
+       |      },
+       |      "digitalAssetSource": {
+       |        "S": "digitalAssetSource"
+       |      },
+       |      "digitalAssetSubtype": {
+       |        "S": "digitalAssetSubtype"
+       |      },
+       |      "originalFiles": {
+       |        "L": [
+       |        {
+       |          "S": "${UUID.randomUUID()}"
+       |        }
+       |       ]
+       |      },
+       |      "originalMetadataFiles": {
+       |        "L": [
+       |          {
+       |            "S": "${UUID.randomUUID()}"
+       |          }
+       |        ]
        |      }
        |    }
        |]
@@ -181,7 +201,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "return an error if the folder is not found in dynamo" in {
-    stubGetRequest(emptyDynamoGetResponse)
+    stubBatchGetRequest(emptyDynamoGetResponse)
     val ex = intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
@@ -189,8 +209,8 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "return an error if no children are found for the folder" in {
-    stubGetRequest(dynamoGetResponse)
-    stubQueryRequest(emptyDynamoQueryResponse)
+    stubBatchGetRequest(dynamoGetResponse)
+    stubDynamoQueryRequest(emptyDynamoQueryResponse)
     val ex = intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
@@ -198,8 +218,8 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "return an error if the dynamo entry does not have a type of 'folder'" in {
-    stubGetRequest(dynamoGetResponse.replace("ArchiveFolder", "Asset"))
-    stubQueryRequest(emptyDynamoQueryResponse)
+    stubBatchGetRequest(dynamoGetResponse.replace("ArchiveFolder", "Asset"))
+    stubDynamoQueryRequest(emptyDynamoQueryResponse)
     val ex = intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
@@ -207,7 +227,7 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "pass the correct id to dynamo getItem" in {
-    stubGetRequest(emptyDynamoGetResponse)
+    stubBatchGetRequest(emptyDynamoGetResponse)
     intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
@@ -217,8 +237,8 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "pass the parent path with no prefixed slash to dynamo if the parent path is empty" in {
-    stubGetRequest(dynamoGetResponse.replace("a/parent/path", ""))
-    stubQueryRequest(emptyDynamoQueryResponse)
+    stubBatchGetRequest(dynamoGetResponse.replace("a/parent/path", ""))
+    stubDynamoQueryRequest(emptyDynamoQueryResponse)
     intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
@@ -232,8 +252,8 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "pass the correct parameters to dynamo for the query request" in {
-    stubGetRequest(dynamoGetResponse)
-    stubQueryRequest(emptyDynamoQueryResponse)
+    stubBatchGetRequest(dynamoGetResponse)
+    stubDynamoQueryRequest(emptyDynamoQueryResponse)
     intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
@@ -247,8 +267,8 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
   }
 
   "handleRequest" should "upload the opex file to the correct path" in {
-    stubGetRequest(dynamoGetResponse)
-    stubQueryRequest(dynamoQueryResponse)
+    stubBatchGetRequest(dynamoGetResponse)
+    stubDynamoQueryRequest(dynamoQueryResponse)
     val opexPath = s"/opex/$executionName/$folderParentPath/$folderId/$folderId.opex"
     stubPutRequest(opexPath)
 
@@ -283,8 +303,8 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
           </opex:Manifest>
         </opex:Transfer>
       </opex:OPEXMetadata>
-    stubGetRequest(dynamoGetResponse)
-    stubQueryRequest(dynamoQueryResponse)
+    stubBatchGetRequest(dynamoGetResponse)
+    stubDynamoQueryRequest(dynamoQueryResponse)
     val opexPath = s"/opex/$executionName/$folderParentPath/$folderId/$folderId.opex"
     stubPutRequest(opexPath)
 
@@ -307,8 +327,8 @@ class LambdaTest extends AnyFlatSpec with BeforeAndAfterEach {
 
   "handleRequest" should "return an error if the S3 API is unavailable" in {
     s3Server.stop()
-    stubGetRequest(dynamoGetResponse)
-    stubQueryRequest(dynamoQueryResponse)
+    stubBatchGetRequest(dynamoGetResponse)
+    stubDynamoQueryRequest(dynamoQueryResponse)
     val ex = intercept[Exception] {
       TestLambda().handleRequest(standardInput, outputStream, null)
     }
