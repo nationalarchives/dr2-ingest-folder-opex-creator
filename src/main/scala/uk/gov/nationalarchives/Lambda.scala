@@ -1,11 +1,11 @@
 package uk.gov.nationalarchives
 
-import cats.effect.IO
+import cats.effect.{IO, Resource}
 import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import com.amazonaws.services.lambda.runtime.{Context, RequestStreamHandler}
 import fs2.Stream
-import fs2.interop.reactivestreams._
+import org.reactivestreams.{FlowAdapters, Publisher}
 import org.scanamo.{DynamoFormat, DynamoReadError, DynamoValue, MissingProperty, TypeCoercionError}
 import org.scanamo.syntax._
 import pureconfig.ConfigSource
@@ -18,6 +18,7 @@ import uk.gov.nationalarchives.Lambda._
 import upickle.default._
 
 import java.io.{InputStream, OutputStream}
+import java.nio.ByteBuffer
 import java.util.UUID
 import scala.jdk.CollectionConverters.MapHasAsScala
 
@@ -75,7 +76,7 @@ class Lambda extends RequestStreamHandler {
   private def formatParentPath(potentialParentPath: Option[String]): String = potentialParentPath.map(parentPath => s"$parentPath/").getOrElse("")
 
   private def uploadXMLToS3(xmlString: String, destinationBucket: String, key: String): IO[CompletedUpload] =
-    Stream.emits[IO, Byte](xmlString.getBytes).chunks.map(_.toByteBuffer).toUnicastPublisher.use { publisher =>
+    Stream.emits[IO, Byte](xmlString.getBytes).chunks.map(_.toByteBuffer).toPublisherResource.use { publisher =>
       s3Client.upload(destinationBucket, key, xmlString.getBytes.length, publisher)
     }
 
@@ -97,6 +98,10 @@ class Lambda extends RequestStreamHandler {
 }
 
 object Lambda {
+  implicit class StreamToPublisher(stream: Stream[IO, ByteBuffer]) {
+    def toPublisherResource: Resource[IO, Publisher[ByteBuffer]] =
+      fs2.interop.flow.toPublisher(stream).map(pub => FlowAdapters.toPublisher[ByteBuffer](pub))
+  }
   implicit val inputReader: Reader[Input] = macroR[Input]
 
   private case class Config(dynamoTableName: String, bucketName: String, dynamoGsiName: String)
