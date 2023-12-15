@@ -14,6 +14,8 @@ The input will come from the step function.
 
 ```
 
+There is no output
+
 [Link to the infrastructure code](https://github.com/nationalarchives/dr2-terraform-environments)
 
 ## Environment Variables
