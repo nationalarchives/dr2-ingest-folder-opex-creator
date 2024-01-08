@@ -22,6 +22,7 @@ jobs:
   deploy:
     uses: nationalarchives/dr2-github-actions/.github/workflows/lambda_deploy.yml@main
     with:
+      repo-name: dr2-ingest-folder-opex-creator
       lambda-name: ${{ github.event.inputs.environment }}-ingest-folder-opex-creator
       deployment-package:  dr2-ingest-folder-opex-creator.jar
       environment: ${{ github.event.inputs.environment }}
