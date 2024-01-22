@@ -1,24 +1,23 @@
 package uk.gov.nationalarchives
 
-import cats.effect.{IO, Resource}
+import cats.effect.IO
 import cats.effect.unsafe.implicits.global
 import cats.implicits._
 import com.amazonaws.services.lambda.runtime.{Context, RequestStreamHandler}
 import fs2.Stream
-import org.reactivestreams.{FlowAdapters, Publisher}
-import org.scanamo.{DynamoFormat, DynamoReadError, DynamoValue, MissingProperty, TypeCoercionError}
+import org.reactivestreams.FlowAdapters
 import org.scanamo.syntax._
+import org.scanamo._
 import pureconfig.ConfigSource
 import pureconfig.generic.auto._
 import pureconfig.module.catseffect.syntax._
 import software.amazon.awssdk.transfer.s3.model.CompletedUpload
-import uk.gov.nationalarchives.DynamoFormatters._
 import uk.gov.nationalarchives.DADynamoDBClient._
+import uk.gov.nationalarchives.DynamoFormatters._
 import uk.gov.nationalarchives.Lambda._
 import upickle.default._
 
 import java.io.{InputStream, OutputStream}
-import java.nio.ByteBuffer
 import java.util.UUID
 import scala.jdk.CollectionConverters.MapHasAsScala
 
@@ -77,7 +76,7 @@ class Lambda extends RequestStreamHandler {
 
   private def uploadXMLToS3(xmlString: String, destinationBucket: String, key: String): IO[CompletedUpload] =
     Stream.emits[IO, Byte](xmlString.getBytes).chunks.map(_.toByteBuffer).toPublisherResource.use { publisher =>
-      s3Client.upload(destinationBucket, key, xmlString.getBytes.length, publisher)
+      s3Client.upload(destinationBucket, key, xmlString.getBytes.length, FlowAdapters.toPublisher(publisher))
     }
 
   private def getAssetRowsWithFileSize(children: List[FolderOrAssetTable], bucketName: String, executionName: String): IO[List[AssetWithFileSize]] = {
@@ -98,10 +97,6 @@ class Lambda extends RequestStreamHandler {
 }
 
 object Lambda {
-  implicit class StreamToPublisher(stream: Stream[IO, ByteBuffer]) {
-    def toPublisherResource: Resource[IO, Publisher[ByteBuffer]] =
-      fs2.interop.flow.toPublisher(stream).map(pub => FlowAdapters.toPublisher[ByteBuffer](pub))
-  }
   implicit val inputReader: Reader[Input] = macroR[Input]
 
   private case class Config(dynamoTableName: String, bucketName: String, dynamoGsiName: String)
