@@ -20,12 +20,17 @@ import upickle.default._
 import java.io.{InputStream, OutputStream}
 import java.util.UUID
 import scala.jdk.CollectionConverters.MapHasAsScala
+import org.typelevel.log4cats.{LoggerName, SelfAwareStructuredLogger}
+import org.typelevel.log4cats.slf4j._
 
 class Lambda extends RequestStreamHandler {
 
   private val xmlCreator: XMLCreator = XMLCreator()
   val dynamoClient: DADynamoDBClient[IO] = DADynamoDBClient[IO]()
   val s3Client: DAS3Client[IO] = DAS3Client[IO]()
+
+  implicit val loggerName: LoggerName = LoggerName("Ingest Folder Opex Creator")
+  private val logger: SelfAwareStructuredLogger[IO] = Slf4jFactory.create[IO].getLogger
 
   private def toFolderOrAssetTable[T <: DynamoTable](dynamoValue: DynamoValue)(implicit dynamoFormat: DynamoFormat[T]): Either[DynamoReadError, FolderOrAssetTable] =
     dynamoFormat.read(dynamoValue).map { table =>
@@ -53,17 +58,26 @@ class Lambda extends RequestStreamHandler {
     val input = read[Input](inputString)
     for {
       config <- ConfigSource.default.loadF[IO, Config]()
+      log = logger.info(Map("batchRef" -> input.batchId))(_)
+
       folderItems <- dynamoClient.getItems[ArchiveFolderDynamoTable, PartitionKey](List(PartitionKey(input.id)), config.dynamoTableName)
       folder <- IO.fromOption(folderItems.headOption)(
         new Exception(s"No folder found for ${input.id} and ${input.batchId}")
       )
       _ <- if (!isFolder(folder.`type`)) IO.raiseError(new Exception(s"Object ${folder.id} is of type ${folder.`type`} and not 'ContentFolder' or 'ArchiveFolder'")) else IO.unit
+      _ <- log(s"Fetched ${folderItems.length} folder items from Dynamo")
+
       children <- childrenOfFolder(folder, config.dynamoTableName, config.dynamoGsiName)
       _ <- IO.fromOption(children.headOption)(new Exception(s"No children found for ${input.id} and ${input.batchId}"))
+      _ <- log(s"Fetch ${children.length} children from Dynamo")
+
       assetRows <- getAssetRowsWithFileSize(children, config.bucketName, input.executionName)
+      _ <- log("File sizes for assets fetched from S3")
+
       folderRows <- IO(children.filter(child => isFolder(child.`type`)))
       folderOpex <- xmlCreator.createFolderOpex(folder, assetRows, folderRows, folder.identifiers)
       _ <- uploadXMLToS3(folderOpex, config.bucketName, generateKey(input.executionName, folder))
+      _ <- log("Uploaded OPEX to S3")
     } yield ()
   }.unsafeRunSync()
 
